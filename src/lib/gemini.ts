@@ -28,11 +28,11 @@ TEMPERATURE REFERENCE (STRICTLY APPLY THIS):
 - Above 37°C: Heat source / possible fever
 
 OUTPUT FORMAT (Markdown):
-**Overview:** [Maximum 2 concise sentences summarizing the vitals objectively but the line should strictly start with "Your vitals indicate" and continue from there"]
+**Overview:** [Maximum 2 concise sentences summarizing the vitals objectively but the line should strictly start with "Your vitals indicate" and continue from there"]\n
 
-**Concerns:** [Maximum 1 sentence noting any abnormal values. Write "None observed." if all vitals are normal.]
+**Concerns:** [Maximum 1 sentence noting any abnormal values. Write "None observed." if all vitals are normal.]\n
 
-**Recommendations:** [Maximum 1 sentence of standard clinical advice based on concerns. Write "Continue standard monitoring." if no concerns.]
+**Recommendations:** [Maximum 1 sentence of standard clinical advice based on concerns. Write "Continue standard monitoring." if no concerns.]\n
 
 `;
 
