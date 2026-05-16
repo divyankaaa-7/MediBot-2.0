@@ -11,7 +11,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { collection, query, where, orderBy, onSnapshot, addDoc, getDocs, setDoc, doc, limit, deleteDoc } from 'firebase/firestore';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { Heart, Droplets, Thermometer, Plus, UserPlus, Users, Rocket, MoreHorizontal, ArrowRight, BrainCircuit, Activity, Bluetooth, History, Trash2, ListFilter, ChevronDown, Calendar as CalendarIcon } from 'lucide-react';
+import { Heart, Droplets, Thermometer, Plus, UserPlus, Users, Rocket, MoreHorizontal, ArrowRight, BrainCircuit, Activity, Bluetooth, History, Trash2, ListFilter, ChevronDown, Calendar as CalendarIcon, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import ReactMarkdown from 'react-markdown';
 
@@ -40,6 +40,7 @@ export default function App() {
   const [liveData, setLiveData] = useState<Partial<VitalMeasurement> | null>(null);
   const [isManualModalOpen, setIsManualModalOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [isEditProfileModalOpen, setIsEditProfileModalOpen] = useState(false);
   const [aiAnalysis, setAiAnalysis] = useState<AIAnalysis | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [historyFilter, setHistoryFilter] = useState<'all' | 'week' | 'month' | 'year' | 'manual'>('all');
@@ -237,9 +238,9 @@ export default function App() {
       authUid: user.uid,
       name,
       bloodGroup: formData.get('blood') as string,
-      height: Number(formData.get('height')),
-      weight: Number(formData.get('weight')),
-      avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${name}`,
+      age: Number(formData.get('age')) || undefined,
+      sex: formData.get('sex') as string,
+      avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${formData.get('avatarSeed') || name}`,
       createdAt: new Date().toISOString()
     };
 
@@ -247,6 +248,33 @@ export default function App() {
     setProfile(newProfile);
     setAllProfiles(prev => [...prev, newProfile]);
     setIsProfileModalOpen(false);
+  };
+
+  const handleEditProfile = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!profile) return;
+    
+    const formData = new FormData(e.currentTarget);
+    const updatedProfile = {
+      ...profile,
+      name: formData.get('name') as string,
+      bloodGroup: formData.get('blood') as string,
+      age: Number(formData.get('age')) || undefined,
+      sex: formData.get('sex') as string,
+      height: Number(formData.get('height')) || undefined,
+      weight: Number(formData.get('weight')) || undefined,
+      avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${formData.get('avatarSeed') || profile?.name}`,
+    };
+
+    try {
+      await setDoc(doc(db, 'users', profile.userId), updatedProfile, { merge: true });
+      setProfile(updatedProfile);
+      setAllProfiles(prev => prev.map(p => p.userId === profile.userId ? updatedProfile : p));
+      setIsEditProfileModalOpen(false);
+    } catch (err) {
+      console.error("Failed to update profile", err);
+      alert("Failed to update profile");
+    }
   };
 
   const handleDeleteRecord = async (recordId: string) => {
@@ -823,15 +851,15 @@ export default function App() {
 
                 <div className="sleek-card p-6">
                   <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-sm font-display font-bold text-slate-800 dark:text-slate-100 uppercase tracking-tight">Vitals Detail</h3>
-                    <button className="text-brand-indigo text-[10px] font-bold tracking-widest">SEE ALL</button>
+                    <h3 className="text-sm font-display font-bold text-slate-800 dark:text-slate-100 uppercase tracking-tight">User Detail</h3>
+                    <button onClick={() => setIsEditProfileModalOpen(true)} className="text-brand-indigo text-[10px] font-bold tracking-widest">SEE ALL</button>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     {[
-                      { label: 'Blood Group', value: profile?.bloodGroup || 'O Negative' },
-                      { label: 'Height', value: `${profile?.height || 170} CM` },
-                      { label: 'Weight', value: `${profile?.weight || 70} KG` },
-                      { label: 'Age/Sex', value: `32 / M` }
+                      { label: 'Blood Group', value: profile?.bloodGroup || '--' },
+                      { label: 'Height', value: profile?.height ? `${profile.height} CM` : '--' },
+                      { label: 'Weight', value: profile?.weight ? `${profile.weight} KG` : '--' },
+                      { label: 'Age/Sex', value: `${profile?.age || '--'} / ${profile?.sex || '--'}` }
                     ].map((det, idx) => (
                       <div key={idx} className="flex flex-col gap-0.5 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800/50">
                         <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{det.label}</span>
@@ -867,15 +895,46 @@ export default function App() {
                   <div className="grid grid-cols-3 gap-4">
                     <div className="space-y-1">
                       <label className="text-xs font-bold text-slate-400 uppercase ml-1">Blood</label>
-                      <input name="blood" placeholder="A+" className="w-full p-4 rounded-xl bg-slate-50 dark:bg-slate-800 border-none focus:ring-2 focus:ring-brand-blue/30" />
+                      <select name="blood" required className="w-full p-4 rounded-xl bg-slate-50 dark:bg-slate-800 border-none focus:ring-2 focus:ring-brand-blue/30 text-sm">
+                        <option value="">Select</option>
+                        <option value="A+">A+</option>
+                        <option value="A-">A-</option>
+                        <option value="B+">B+</option>
+                        <option value="B-">B-</option>
+                        <option value="AB+">AB+</option>
+                        <option value="AB-">AB-</option>
+                        <option value="O+">O+</option>
+                        <option value="O-">O-</option>
+                      </select>
                     </div>
                     <div className="space-y-1">
-                      <label className="text-xs font-bold text-slate-400 uppercase ml-1">Height (cm)</label>
-                      <input name="height" type="number" placeholder="170" className="w-full p-4 rounded-xl bg-slate-50 dark:bg-slate-800 border-none focus:ring-2 focus:ring-brand-blue/30" />
+                      <label className="text-xs font-bold text-slate-400 uppercase ml-1">Age</label>
+                      <input name="age" type="number" placeholder="30" required className="w-full p-4 rounded-xl bg-slate-50 dark:bg-slate-800 border-none focus:ring-2 focus:ring-brand-blue/30" />
                     </div>
                     <div className="space-y-1">
-                      <label className="text-xs font-bold text-slate-400 uppercase ml-1">Weight (kg)</label>
-                      <input name="weight" type="number" placeholder="70" className="w-full p-4 rounded-xl bg-slate-50 dark:bg-slate-800 border-none focus:ring-2 focus:ring-brand-blue/30" />
+                      <label className="text-xs font-bold text-slate-400 uppercase ml-1">Sex</label>
+                      <select name="sex" required className="w-full p-4 rounded-xl bg-slate-50 dark:bg-slate-800 border-none focus:ring-2 focus:ring-brand-blue/30 text-sm">
+                        <option value="">Select</option>
+                        <option value="M">M</option>
+                        <option value="F">F</option>
+                        <option value="Other">Other</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-400 uppercase ml-1">Select Avatar</label>
+                    <div className="grid grid-cols-6 gap-3">
+                      {['Felix', 'Aneka', 'Jack', 'Jocelyn', 'Oliver', 'Maria', 'Jasper', 'Bella', 'Max', 'Sara', 'Simon', 'Zoe'].map(seed => (
+                        <label key={seed} className="cursor-pointer group relative">
+                          <input type="radio" name="avatarSeed" value={seed} defaultChecked={seed === 'Felix'} className="peer sr-only" />
+                          <div className="w-12 h-12 rounded-full border-2 border-transparent peer-checked:border-brand-blue peer-checked:scale-110 transition-all overflow-hidden bg-slate-50 dark:bg-slate-800">
+                            <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${seed}`} alt={seed} className="w-full h-full" />
+                          </div>
+                          <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-brand-blue rounded-full text-white flex items-center justify-center opacity-0 peer-checked:opacity-100 transition-opacity">
+                            <Check size={10} />
+                          </div>
+                        </label>
+                      ))}
                     </div>
                   </div>
                   <button type="submit" className="mt-4 w-full py-4 bg-brand-blue text-white rounded-2xl font-bold shadow-lg shadow-brand-blue/30 transition-all hover:scale-[1.02] active:scale-[0.98]">
@@ -884,6 +943,90 @@ export default function App() {
                   {allProfiles.length > 0 && (
                     <button type="button" onClick={() => setIsProfileModalOpen(false)} className="text-slate-400 text-sm font-medium hover:text-slate-600 transition-colors">Cancel</button>
                   )}
+                </form>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+
+        {/* Edit Profile Modal */}
+        <AnimatePresence>
+          {isEditProfileModalOpen && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-10 max-w-md w-full shadow-2xl"
+              >
+                <div className="flex items-center gap-4 mb-8">
+                  <div className="w-12 h-12 bg-brand-indigo text-white rounded-xl flex items-center justify-center"><UserPlus /></div>
+                  <h2 className="text-2xl font-display font-bold">Edit Profile</h2>
+                </div>
+                <form onSubmit={handleEditProfile} className="flex flex-col gap-4">
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-400 uppercase ml-1">Full Name</label>
+                    <input name="name" defaultValue={profile?.name} required placeholder="John Doe" className="w-full p-4 rounded-xl bg-slate-50 dark:bg-slate-800 border-none focus:ring-2 focus:ring-brand-indigo/30" />
+                  </div>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-slate-400 uppercase ml-1">Blood</label>
+                      <select name="blood" defaultValue={profile?.bloodGroup} required className="w-full p-4 rounded-xl bg-slate-50 dark:bg-slate-800 border-none focus:ring-2 focus:ring-brand-indigo/30 text-sm">
+                        <option value="">Select</option>
+                        <option value="A+">A+</option>
+                        <option value="A-">A-</option>
+                        <option value="B+">B+</option>
+                        <option value="B-">B-</option>
+                        <option value="AB+">AB+</option>
+                        <option value="AB-">AB-</option>
+                        <option value="O+">O+</option>
+                        <option value="O-">O-</option>
+                      </select>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-slate-400 uppercase ml-1">Age</label>
+                      <input name="age" type="number" defaultValue={profile?.age} placeholder="30" required className="w-full p-4 rounded-xl bg-slate-50 dark:bg-slate-800 border-none focus:ring-2 focus:ring-brand-indigo/30" />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-slate-400 uppercase ml-1">Sex</label>
+                      <select name="sex" defaultValue={profile?.sex} required className="w-full p-4 rounded-xl bg-slate-50 dark:bg-slate-800 border-none focus:ring-2 focus:ring-brand-indigo/30 text-sm">
+                        <option value="">Select</option>
+                        <option value="M">M</option>
+                        <option value="F">F</option>
+                        <option value="Other">Other</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4 mt-2">
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-slate-400 uppercase ml-1">Height (cm)</label>
+                      <input name="height" type="number" defaultValue={profile?.height} placeholder="170" className="w-full p-4 rounded-xl bg-slate-50 dark:bg-slate-800 border-none focus:ring-2 focus:ring-brand-indigo/30" />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-slate-400 uppercase ml-1">Weight (kg)</label>
+                      <input name="weight" type="number" defaultValue={profile?.weight} placeholder="70" className="w-full p-4 rounded-xl bg-slate-50 dark:bg-slate-800 border-none focus:ring-2 focus:ring-brand-indigo/30" />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-400 uppercase ml-1">Select Avatar</label>
+                    <div className="grid grid-cols-6 gap-3">
+                      {['Felix', 'Aneka', 'Jack', 'Jocelyn', 'Oliver', 'Maria', 'Jasper', 'Bella', 'Max', 'Sara', 'Simon', 'Zoe'].map(seed => (
+                        <label key={seed} className="cursor-pointer group relative">
+                          <input type="radio" name="avatarSeed" value={seed} defaultChecked={profile?.avatarUrl?.includes(seed) || (!profile?.avatarUrl && seed === 'Felix')} className="peer sr-only" />
+                          <div className="w-12 h-12 rounded-full border-2 border-transparent peer-checked:border-brand-indigo peer-checked:scale-110 transition-all overflow-hidden bg-slate-50 dark:bg-slate-800">
+                            <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${seed}`} alt={seed} className="w-full h-full" />
+                          </div>
+                          <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-brand-indigo rounded-full text-white flex items-center justify-center opacity-0 peer-checked:opacity-100 transition-opacity">
+                            <Check size={10} />
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                  <button type="submit" className="mt-4 w-full py-4 bg-brand-indigo text-white rounded-2xl font-bold shadow-lg shadow-brand-indigo/30 transition-all hover:scale-[1.02] active:scale-[0.98]">
+                    Save Details
+                  </button>
+                  <button type="button" onClick={() => setIsEditProfileModalOpen(false)} className="text-slate-400 text-sm font-medium hover:text-slate-600 transition-colors">Cancel</button>
                 </form>
               </motion.div>
             </div>

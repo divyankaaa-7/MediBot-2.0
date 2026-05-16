@@ -4,6 +4,8 @@ export interface UserProfile {
   bloodGroup?: string;
   height?: number;
   weight?: number;
+  age?: number;
+  sex?: string;
   avatarUrl?: string;
   createdAt: string;
   isDeleted?: boolean;
