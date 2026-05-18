@@ -411,6 +411,20 @@ export default function App() {
     setIsManualModalOpen(false);
   };
 
+  const handleDeleteDoctor = async (doctorId: string) => {
+    if (!profile || !user) return;
+    if (!window.confirm('Are you sure you want to remove this doctor from your contacts?')) return;
+    
+    const updatedDoctors = profile.doctors?.filter(d => d.id !== doctorId) || [];
+    try {
+      await setDoc(doc(db, 'users', profile.userId), { ...profile, doctors: updatedDoctors }, { merge: true });
+      setProfile({ ...profile, doctors: updatedDoctors });
+    } catch (error) {
+      console.error("Error deleting doctor", error);
+      alert("Failed to delete doctor");
+    }
+  };
+
   const handleAddDoctor = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!profile || !user) return;
@@ -1354,8 +1368,11 @@ export default function App() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {doctorsList.map(doc => (
-                    <div key={doc.id} className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800">
-                      <div className="flex items-center gap-4 mb-4">
+                    <div key={doc.id} className="relative p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800">
+                      <button onClick={() => handleDeleteDoctor(doc.id)} className="absolute top-4 right-4 p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors" title="Delete Doctor">
+                        <Trash2 size={16} />
+                      </button>
+                      <div className="flex items-center gap-4 mb-4 pr-8">
                         <div className="w-12 h-12 rounded-full overflow-hidden bg-white dark:bg-slate-800">
                           <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${doc.seed}`} alt={doc.name} className="w-full h-full" />
                         </div>
@@ -1622,6 +1639,17 @@ export default function App() {
                       <button onClick={exportToPDF} className="w-full py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-600 dark:text-slate-300 flex items-center justify-center gap-2 hover:border-brand-indigo hover:text-brand-indigo transition-colors">
                         <Download size={16} /> Export as PDF
                       </button>
+                      <button onClick={() => { setGeneratedLink(null); handleSendRecords(''); }} disabled={isGeneratingLink} className="w-full py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-600 dark:text-slate-300 flex items-center justify-center gap-2 hover:border-brand-indigo hover:text-brand-indigo transition-colors disabled:opacity-50">
+                        {isGeneratingLink ? <Activity className="animate-spin" size={16} /> : <Link size={16} />} {isGeneratingLink ? "Generating..." : "Generate Share Link"}
+                      </button>
+                      {generatedLink && (
+                        <div className="mt-2 p-3 bg-white dark:bg-slate-800 border border-emerald-200 dark:border-emerald-900/50 rounded-xl flex items-center justify-between">
+                          <span className="text-xs text-slate-500 truncate w-3/4">{generatedLink}</span>
+                          <button onClick={handleCopyLink} className="text-emerald-500 hover:text-emerald-600 transition-colors p-1" title="Copy Link">
+                            <Copy size={14} />
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
